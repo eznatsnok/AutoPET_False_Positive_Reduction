@@ -184,7 +184,7 @@ class Hybrid_cnn():
         Read inputs from /input, process with your algorithm and write to /output
         """
         # process function will be called once for each test sample
-        for file in enumerate(os.listdir(os.path.join(self.input_path, 'images/pet/'))):
+        for file in os.listdir(os.path.join(self.input_path, 'images/pet/')):
             uuid = os.path.splitext(file)[0]
 
             self.check_gpu()
