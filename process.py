@@ -46,22 +46,18 @@ class Hybrid_cnn():
             print('Device name: ' + torch.cuda.get_device_name(0))
             print('Device memory: ' + str(torch.cuda.get_device_properties(0).total_memory))
 
-    def load_inputs(self):
+    def load_inputs(self, uuid):
         """
         Read from /input/
         Check https://grand-challenge.org/algorithms/interfaces/
         """
-        ct_mha = os.listdir(os.path.join(self.input_path, 'images/ct/'))[0]
-        pet_mha = os.listdir(os.path.join(self.input_path, 'images/pet/'))[0]
-        uuid = os.path.splitext(ct_mha)[0]
 
-        self.convert_mha_to_nii(os.path.join(self.input_path, 'images/pet/', pet_mha),
+        self.convert_mha_to_nii(os.path.join(self.input_path, 'images/pet/', uuid + '.mha'),
                                 # os.path.join(self.nii_path, 'TCIA_001_0001.nii.gz'))    # in my nnUnet, 1 for pet, 0 for ct
                                 os.path.join(self.nii_path, 'TCIA_001_0000.nii.gz')) 
-        self.convert_mha_to_nii(os.path.join(self.input_path, 'images/ct/', ct_mha),
+        self.convert_mha_to_nii(os.path.join(self.input_path, 'images/ct/', uuid + '.mha'),
                                 # os.path.join(self.nii_path, 'TCIA_001_0000.nii.gz'))
                                 os.path.join(self.nii_path, 'TCIA_001_0001.nii.gz')) 
-        return uuid
 
     def write_outputs(self, uuid):
         """
@@ -189,15 +185,18 @@ class Hybrid_cnn():
         Read inputs from /input, process with your algorithm and write to /output
         """
         # process function will be called once for each test sample
-        self.check_gpu()
-        print('Start processing')
-        uuid = self.load_inputs()
+        for indx , file in enumerate(os.listdir(os.path.join(self.input_path, 'images/pet/'))):
+            uuid = os.path.splitext(file)[indx]
 
-        print('Start prediction')
-        self.predict_ssl()      # get ssl output
+            self.check_gpu()
+            print('Start processing')
+            self.load_inputs(uuid)
 
-        print('Start output writing')
-        self.write_outputs(uuid)
+            print('Start prediction')
+            self.predict_ssl()      # get ssl output
+
+            print('Start output writing')
+            self.write_outputs(uuid)
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -500,4 +499,5 @@ class OutConv(nn.Module):
 
 if __name__ == "__main__":
     print("START")
+    
     Hybrid_cnn().process()
