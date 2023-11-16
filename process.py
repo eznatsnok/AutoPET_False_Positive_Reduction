@@ -1,3 +1,4 @@
+
 import os
 import time
 
@@ -16,7 +17,7 @@ class Hybrid_cnn():
         Initialize your model etc.
         """
         # set some paths and parameters
-        self.input_path = '/input/'  # according to the specified grand-challenge interfaces
+        self.input_path = '/data/home/hik37564/disk/FDG_PETCT/for_AutoPet/input/'  # according to the specified grand-challenge interfaces
         self.output_path = '/output/images/automated-petct-lesion-segmentation/'  # according to the specified grand-challenge interfaces
         self.pretrained_weights_path = '/opt/algorithm/checkpoints/hybrid_cnn/'
         self.nii_path = '/opt/algorithm/nnUNet_raw_data_base/nnUNet_raw_data/Task504_Total_PET_Lesion_Only/imagesTs'
@@ -152,11 +153,13 @@ class Hybrid_cnn():
             result[fold] = pred_volume
         
         final_pred = torch.softmax(torch.mean(result,dim=0), dim=1)
+        print("final_pred: ", final_pred.shape) 
         pred_result = final_pred.cpu().data.numpy()        
         pred_result[pet_cropped.shape[0] - 15:,:,:] = 0 # remove the last few slices that are in the brain region
         pred_result[:15,:,:] = 0 # remove the first few slices that are in the brain region
+        print("pred_result: ", pred_result.shape)  
         pred_pad_volume=np.transpose(np.pad(pred_result, ((0,0), (0,0), (start, ct_volume_normalized.shape[1] - end), (start, ct_volume_normalized.shape[1] - end)), 'constant'), (1, 0, 2, 3))
-        
+        print("pred_pad_volume: ", pred_pad_volume.shape)
         # combine with nnUnet outcome
         os.system(f'nnUNet_predict -i {self.nii_path} -o {self.result_path} -t 001 -m 3d_fullres --save_npz')
         if not os.path.exists(os.path.join(self.result_path, self.nii_seg_file)):
@@ -167,12 +170,21 @@ class Hybrid_cnn():
         print('Prediction finished')
 
         pred_nnunet = np.load(os.path.join(self.result_path, self.npz_seg_file))['softmax']
+        
+        print("pred_nnunet: ", pred_nnunet.shape)
+        img_pet = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0000.nii.gz'))
+        pet_volume = sitk.GetArrayFromImage(img_pet)
+        print("pet_vol: " , pet_volume.shape)
+        img_ct = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0001.nii.gz'))
+        ct_volume = sitk.GetArrayFromImage(img_ct)
+        print("ct_vol: ", ct_volume.shape)
+
         pred_sum = softmax(pred_pad_volume * 0.65 + pred_nnunet * 0.35, axis=0)
         pred_sum_result = np.argmax(pred_sum, axis=0).astype(np.uint8)
         # pred_sum_result = np.argmax(pred_pad_volume, axis=0).astype(np.uint8)
 
         pred_save_image = sitk.GetImageFromArray(pred_sum_result)
-        pred_save_image.SetSpacing(img_pet.GetSpacing())
+        pred_save_image.SetSpacing(img_pet.GetSdpacing())
         pred_save_image.SetOrigin(img_pet.GetOrigin())
         pred_save_image.SetDirection(img_pet.GetDirection())
         sitk.WriteImage(pred_save_image, os.path.join(self.result_path, self.nii_seg_file))
@@ -184,7 +196,7 @@ class Hybrid_cnn():
         Read inputs from /input, process with your algorithm and write to /output
         """
         # process function will be called once for each test sample
-        for file in os.listdir(os.path.join(self.input_path, 'images/pet/')):
+        for file in os.listdir(os.path.join("/data/home/hik37564/disk/FDG_PETCT/for_AutoPet/input", 'images/pet/')):
             uuid = os.path.splitext(file)[0]
 
             self.check_gpu()
