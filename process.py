@@ -76,10 +76,14 @@ class Hybrid_cnn():
         # one channel image        
         img_pet = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0000.nii.gz'))
         pet_volume = sitk.GetArrayFromImage(img_pet)
-
+        
         img_ct = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0001.nii.gz'))
         ct_volume = sitk.GetArrayFromImage(img_ct)
 
+        try:
+            print(f"pet_volume at beginning from nii: {pet_volume.shape}")
+            print(f"ct_volume at beginning from nii: {ct_volume.shape}")
+        except: pass
         ct_volume_normalized = (ct_volume - (-800)) / (400 - (-800))
         ct_volume_normalized[ct_volume_normalized > 1] = 1.
         ct_volume_normalized[ct_volume_normalized < 0] = 0.
@@ -152,9 +156,15 @@ class Hybrid_cnn():
             result[fold] = pred_volume
         
         final_pred = torch.softmax(torch.mean(result,dim=0), dim=1)
-        pred_result = final_pred.cpu().data.numpy()        
+        pred_result = final_pred.cpu().data.numpy()     
+        try:
+            print(f"pred_result bevore brain slices removed: {pred_result.shape}")  
+        except: pass
         pred_result[pet_cropped.shape[0] - 15:,:,:] = 0 # remove the last few slices that are in the brain region
         pred_result[:15,:,:] = 0 # remove the first few slices that are in the brain region
+        try:
+            print(f"pred_result after brain slices removed: {pred_result.shape}")
+        except: pass
         pred_pad_volume=np.transpose(np.pad(pred_result, ((0,0), (0,0), (start, ct_volume_normalized.shape[1] - end), (start, ct_volume_normalized.shape[1] - end)), 'constant'), (1, 0, 2, 3))
         
         # combine with nnUnet outcome
@@ -165,8 +175,19 @@ class Hybrid_cnn():
             print('.', end='')
             time.sleep(5)
         print('Prediction finished')
-
         pred_nnunet = np.load(os.path.join(self.result_path, self.npz_seg_file))['softmax']
+        try: 
+            img_pet = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0000.nii.gz'))
+            pet_volume = sitk.GetArrayFromImage(img_pet)
+            img_ct = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0001.nii.gz'))
+            ct_volume = sitk.GetArrayFromImage(img_ct)
+            print(f"pred_result: {pred_result.shape}")
+            print(f"pet_volume from nii: {pet_volume.shape}")
+            print(f"ct_volume from nii: {ct_volume.shape}")
+            print(f"pred_pad_volume ResNet: {pred_pad_volume.shape}")
+            print(f"pred_nnunet nnUnet: {pred_nnunet.shape}")
+        except: pass
+
         pred_sum = softmax(pred_pad_volume * 0.65 + pred_nnunet * 0.35, axis=0)
         pred_sum_result = np.argmax(pred_sum, axis=0).astype(np.uint8)
         # pred_sum_result = np.argmax(pred_pad_volume, axis=0).astype(np.uint8)
