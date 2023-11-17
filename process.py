@@ -200,7 +200,6 @@ class Hybrid_cnn():
         sitk.WriteImage(pred_save_image, os.path.join(self.result_path, self.nii_seg_file))
 
         print("ssl segmentation done!")
-        os.remove(os.path.join(self.result_path, self.nii_seg_file))
 
 
     def process(self):
