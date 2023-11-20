@@ -106,7 +106,8 @@ class Hybrid_cnn():
 
         model_stage_2 = UNet(n_channels=5, n_classes=2, bilinear=False)
 
-        result = torch.empty([3, pet_cropped.shape[0], 2, 224, 224])
+        #result = torch.empty([3, pet_cropped.shape[0], 2, 224, 224])
+        result = torch.empty([3, pet_cropped.shape[0], 2, 400, 400])
         for fold in range(3):
 
             # open checkpoint file
