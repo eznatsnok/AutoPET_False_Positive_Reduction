@@ -93,11 +93,13 @@ class Hybrid_cnn():
         pet_volume_normalized[pet_volume_normalized > 1] = 1.
         pet_volume_normalized[pet_volume_normalized < 0] = 0.
 
-        start = ct_volume_normalized.shape[1] // 2 - 224 // 2
-        end = start + 224
-        pet_cropped = pet_volume_normalized[:, start:end, start:end]
-        ct_cropped = ct_volume_normalized[:, start:end, start:end]
-
+        #start = ct_volume_normalized.shape[1] // 2 - 224 // 2
+        #end = start + 224
+        #pet_cropped = pet_volume_normalized[:, start:end, start:end]
+        #ct_cropped = ct_volume_normalized[:, start:end, start:end]
+        pet_cropped = pet_volume_normalized
+        ct_cropped = ct_volume_normalized
+        
         model = ResNet(Bottleneck, [3, 4, 6, 3])
         num_channels = model.layer4[2].bn3.weight.shape[0]
         seg_decoder = Unet_Decoder(n_channels=num_channels, n_classes=2)
@@ -161,13 +163,13 @@ class Hybrid_cnn():
         try:
             print(f"pred_result bevore brain slices removed: {pred_result.shape}")  
         except: pass
-        pred_result[pet_cropped.shape[0] - 15:,:,:] = 0 # remove the last few slices that are in the brain region
-        pred_result[:15,:,:] = 0 # remove the first few slices that are in the brain region
+        #pred_result[pet_cropped.shape[0] - 15:,:,:] = 0 # remove the last few slices that are in the brain region
+        #pred_result[:15,:,:] = 0 # remove the first few slices that are in the brain region
         try:
             print(f"pred_result after brain slices removed: {pred_result.shape}")
         except: pass
-        pred_pad_volume=np.transpose(np.pad(pred_result, ((0,0), (0,0), (start, ct_volume_normalized.shape[1] - end), (start, ct_volume_normalized.shape[1] - end)), 'constant'), (1, 0, 2, 3))
-        
+        #pred_pad_volume=np.transpose(np.pad(pred_result, ((0,0), (0,0), (start, ct_volume_normalized.shape[1] - end), (start, ct_volume_normalized.shape[1] - end)), 'constant'), (1, 0, 2, 3))
+        pred_pad_volume=np.transpose(pred_result, (1, 0, 2, 3))
         # combine with nnUnet outcome
         os.system(f'nnUNet_predict -i {self.nii_path} -o {self.result_path} -t 001 -m 3d_fullres --save_npz')
         if not os.path.exists(os.path.join(self.result_path, self.nii_seg_file)):
