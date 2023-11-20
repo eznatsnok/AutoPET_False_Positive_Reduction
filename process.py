@@ -126,7 +126,7 @@ class Hybrid_cnn():
             seg_decoder.eval()
             model_stage_2.eval()
 
-            pred_volume = torch.empty([pet_cropped.shape[0], 2, 224, 224])
+            pred_volume = torch.empty([pet_cropped.shape[0], 2, 400, 400])
 
             for i in range(pet_cropped.shape[0]):
                 ct_slice = ct_cropped[i, :, :].astype(np.float32)
