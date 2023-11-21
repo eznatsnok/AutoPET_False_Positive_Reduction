@@ -1,6 +1,6 @@
 import os
 import time
-
+import logging
 import numpy as np
 import SimpleITK as sitk
 import torch
@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from scipy.special import softmax
 
+logging.basicConfig(filename='log.txt', level=logging.INFO, format='%(asctime)s %(message)s')
 class Hybrid_cnn():
     def __init__(self):
         """
@@ -24,7 +25,7 @@ class Hybrid_cnn():
         self.nii_seg_file = 'TCIA_001.nii.gz'
         self.npz_seg_file = 'TCIA_001.npz'
 
-       def convert_mha_to_nii(self, mha_input_path, nii_out_path):  #nnUNet specific
+    def convert_mha_to_nii(self, mha_input_path, nii_out_path):  #nnUNet specific
         img = sitk.ReadImage(mha_input_path)
         sitk.WriteImage(img, nii_out_path, True)
 
@@ -68,7 +69,7 @@ class Hybrid_cnn():
         os.remove(os.path.join(self.result_path, self.nii_seg_file))
         print('Output written to: ' + os.path.join(self.output_path, uuid + ".mha"))
 
-    def predict_ssl(self):
+    def predict_ssl(self,uuid):
         """
         Your algorithm goes here
         """
@@ -93,8 +94,8 @@ class Hybrid_cnn():
         pet_volume_normalized[pet_volume_normalized > 1] = 1.
         pet_volume_normalized[pet_volume_normalized < 0] = 0.
 
-        start = ct_volume_normalized.shape[1] // 2 - 224 // 2
-        end = start + 224
+        # start = ct_volume_normalized.shape[1] // 2 - 224 // 2
+        # end = start + 224
         #pet_cropped = pet_volume_normalized[:, start:end, start:end]
         #ct_cropped = ct_volume_normalized[:, start:end, start:end]
         pet_cropped = pet_volume_normalized
@@ -110,15 +111,15 @@ class Hybrid_cnn():
         result = torch.empty([3, pet_cropped.shape[0], 2, 400, 400])
         for fold in range(3):
 
-            # # open checkpoint file
-            # checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint.pth.tar'), map_location="cpu")
-            # msg_1 = model.load_state_dict(checkpoint['en_state_dict'], strict=False)
-            # msg_2 = seg_decoder.load_state_dict(checkpoint['de_state_dict'], strict=False)
-            # # print('Pretrained weights found at {} and loaded with msg: {} and {}'.format(os.path.join(self.pretrained_weights_path, sorted(os.listdir(self.pretrained_weights_path))[int(fold)]), msg_1, msg_2))
+            # open checkpoint file
+            checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint.pth.tar'), map_location="cpu")
+            msg_1 = model.load_state_dict(checkpoint['en_state_dict'], strict=False)
+            msg_2 = seg_decoder.load_state_dict(checkpoint['de_state_dict'], strict=False)
+            # print('Pretrained weights found at {} and loaded with msg: {} and {}'.format(os.path.join(self.pretrained_weights_path, sorted(os.listdir(self.pretrained_weights_path))[int(fold)]), msg_1, msg_2))
 
-            # checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), map_location="cpu")
-            # msg_3 = model_stage_2.load_state_dict(checkpoint['state_dict'], strict=False)
-            # # print('Pretrained weights for model_stage_2 found at {} and loaded with msg: {}'.format(os.path.join(self.pretrained_weights_path, 'hybrid_cnn/fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), msg_3))
+            checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), map_location="cpu")
+            msg_3 = model_stage_2.load_state_dict(checkpoint['state_dict'], strict=False)
+            # print('Pretrained weights for model_stage_2 found at {} and loaded with msg: {}'.format(os.path.join(self.pretrained_weights_path, 'hybrid_cnn/fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), msg_3))
 
             model.cuda()
             seg_decoder.cuda()
@@ -192,28 +193,24 @@ class Hybrid_cnn():
             print(f"pred_nnunet nnUnet: {pred_nnunet.shape}")
         except: pass
         
-
+        
         # Get the shape of the array
-        shape = pred_nnunet.shape
+        if pred_nnunet.shape != pred_pad_volume.shape:
+            logging.info(f"UUID: {uuid}")  # Write UUID to logfile
+            logging.info(f"pred_nnunet.shape: {pred_nnunet.shape}")
+            logging.info(f"pred_pad_volume.shape: {pred_pad_volume.shape}")
+        else:
+            pred_sum = softmax(pred_pad_volume * 0.65 + pred_nnunet * 0.35, axis=0)
+            pred_sum_result = np.argmax(pred_sum, axis=0).astype(np.uint8)
+            # pred_sum_result = np.argmax(pred_pad_volume, axis=0).astype(np.uint8)
 
-        # Get the pixel spacing
-        pixel_spacing = img_pet.GetSpacing()
+            pred_save_image = sitk.GetImageFromArray(pred_sum_result)
+            pred_save_image.SetSpacing(img_pet.GetSpacing())
+            pred_save_image.SetOrigin(img_pet.GetOrigin())
+            pred_save_image.SetDirection(img_pet.GetDirection())
+            sitk.WriteImage(pred_save_image, os.path.join(self.result_path, self.nii_seg_file))
 
-        print("Shape:", shape)
-        print("Pixel Spacing:", pixel_spacing)
-        pred_pad_volume = processing.conform(pred_pad_volume,shape,pixel_spacing )
-
-        pred_sum = softmax(pred_pad_volume * 0.65 + pred_nnunet * 0.35, axis=0)
-        pred_sum_result = np.argmax(pred_sum, axis=0).astype(np.uint8)
-        # pred_sum_result = np.argmax(pred_pad_volume, axis=0).astype(np.uint8)
-
-        pred_save_image = sitk.GetImageFromArray(pred_sum_result)
-        pred_save_image.SetSpacing(img_pet.GetSpacing())
-        pred_save_image.SetOrigin(img_pet.GetOrigin())
-        pred_save_image.SetDirection(img_pet.GetDirection())
-        sitk.WriteImage(pred_save_image, os.path.join(self.result_path, self.nii_seg_file))
-
-        print("ssl segmentation done!")
+            print("ssl segmentation done!")
 
 
     def process(self):
@@ -229,7 +226,7 @@ class Hybrid_cnn():
             self.load_inputs(uuid)
 
             print('Start prediction')
-            self.predict_ssl()      # get ssl output
+            self.predict_ssl(uuid)      # get ssl output
 
             print('Start output writing')
             self.write_outputs(uuid)
