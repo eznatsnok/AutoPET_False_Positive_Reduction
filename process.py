@@ -24,7 +24,7 @@ class Hybrid_cnn():
         self.nii_seg_file = 'TCIA_001.nii.gz'
         self.npz_seg_file = 'TCIA_001.npz'
 
-    def convert_mha_to_nii(self, mha_input_path, nii_out_path):  #nnUNet specific
+       def convert_mha_to_nii(self, mha_input_path, nii_out_path):  #nnUNet specific
         img = sitk.ReadImage(mha_input_path)
         sitk.WriteImage(img, nii_out_path, True)
 
@@ -93,8 +93,8 @@ class Hybrid_cnn():
         pet_volume_normalized[pet_volume_normalized > 1] = 1.
         pet_volume_normalized[pet_volume_normalized < 0] = 0.
 
-        #start = ct_volume_normalized.shape[1] // 2 - 224 // 2
-        #end = start + 224
+        start = ct_volume_normalized.shape[1] // 2 - 224 // 2
+        end = start + 224
         #pet_cropped = pet_volume_normalized[:, start:end, start:end]
         #ct_cropped = ct_volume_normalized[:, start:end, start:end]
         pet_cropped = pet_volume_normalized
@@ -110,15 +110,15 @@ class Hybrid_cnn():
         result = torch.empty([3, pet_cropped.shape[0], 2, 400, 400])
         for fold in range(3):
 
-            # open checkpoint file
-            checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint.pth.tar'), map_location="cpu")
-            msg_1 = model.load_state_dict(checkpoint['en_state_dict'], strict=False)
-            msg_2 = seg_decoder.load_state_dict(checkpoint['de_state_dict'], strict=False)
-            # print('Pretrained weights found at {} and loaded with msg: {} and {}'.format(os.path.join(self.pretrained_weights_path, sorted(os.listdir(self.pretrained_weights_path))[int(fold)]), msg_1, msg_2))
+            # # open checkpoint file
+            # checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint.pth.tar'), map_location="cpu")
+            # msg_1 = model.load_state_dict(checkpoint['en_state_dict'], strict=False)
+            # msg_2 = seg_decoder.load_state_dict(checkpoint['de_state_dict'], strict=False)
+            # # print('Pretrained weights found at {} and loaded with msg: {} and {}'.format(os.path.join(self.pretrained_weights_path, sorted(os.listdir(self.pretrained_weights_path))[int(fold)]), msg_1, msg_2))
 
-            checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), map_location="cpu")
-            msg_3 = model_stage_2.load_state_dict(checkpoint['state_dict'], strict=False)
-            # print('Pretrained weights for model_stage_2 found at {} and loaded with msg: {}'.format(os.path.join(self.pretrained_weights_path, 'hybrid_cnn/fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), msg_3))
+            # checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), map_location="cpu")
+            # msg_3 = model_stage_2.load_state_dict(checkpoint['state_dict'], strict=False)
+            # # print('Pretrained weights for model_stage_2 found at {} and loaded with msg: {}'.format(os.path.join(self.pretrained_weights_path, 'hybrid_cnn/fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), msg_3))
 
             model.cuda()
             seg_decoder.cuda()
@@ -127,8 +127,8 @@ class Hybrid_cnn():
             seg_decoder.eval()
             model_stage_2.eval()
 
+            #pred_volume = torch.empty([pet_cropped.shape[0], 2, 224, 224])
             pred_volume = torch.empty([pet_cropped.shape[0], 2, 400, 400])
-
             for i in range(pet_cropped.shape[0]):
                 ct_slice = ct_cropped[i, :, :].astype(np.float32)
                 ct_slice = (ct_slice -  0.2617) /  0.3239
@@ -191,6 +191,17 @@ class Hybrid_cnn():
             print(f"pred_pad_volume ResNet: {pred_pad_volume.shape}")
             print(f"pred_nnunet nnUnet: {pred_nnunet.shape}")
         except: pass
+        
+
+        # Get the shape of the array
+        shape = pred_nnunet.shape
+
+        # Get the pixel spacing
+        pixel_spacing = img_pet.GetSpacing()
+
+        print("Shape:", shape)
+        print("Pixel Spacing:", pixel_spacing)
+        pred_pad_volume = processing.conform(pred_pad_volume,shape,pixel_spacing )
 
         pred_sum = softmax(pred_pad_volume * 0.65 + pred_nnunet * 0.35, axis=0)
         pred_sum_result = np.argmax(pred_sum, axis=0).astype(np.uint8)
@@ -225,7 +236,7 @@ class Hybrid_cnn():
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
+    """3x3  convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
