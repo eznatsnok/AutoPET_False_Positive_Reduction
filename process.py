@@ -6,8 +6,9 @@ import SimpleITK as sitk
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import nibabel as nib
 from scipy.special import softmax
+
 
 logging.basicConfig(filename='log.txt', level=logging.INFO, format='%(asctime)s %(message)s')
 class Hybrid_cnn():
@@ -100,7 +101,10 @@ class Hybrid_cnn():
         #ct_cropped = ct_volume_normalized[:, start:end, start:end]
         pet_cropped = pet_volume_normalized
         ct_cropped = ct_volume_normalized
-        
+        # pet_cropped , bbox = crop_to_nonzero(np.expand_dims(pet_volume_normalized, axis=0)) # funktion aus cropping.py erwartet tensor (4 dims) -> add dummy dim
+        # pet_cropped = np.squeeze(pet_cropped, axis =0)
+        # ct_cropped = ct_volume_normalized[bbox[0][0]:bbox[0][1], :, :]
+
         model = ResNet(Bottleneck, [3, 4, 6, 3])
         num_channels = model.layer4[2].bn3.weight.shape[0]
         seg_decoder = Unet_Decoder(n_channels=num_channels, n_classes=2)
@@ -108,7 +112,9 @@ class Hybrid_cnn():
         model_stage_2 = UNet(n_channels=5, n_classes=2, bilinear=False)
 
         #result = torch.empty([3, pet_cropped.shape[0], 2, 224, 224])
-        result = torch.empty([3, pet_cropped.shape[0], 2, 400, 400])
+        #result = torch.empty([3, pet_cropped.shape[0], 2, 400, 400])
+        result = torch.empty([3, pet_cropped.shape[0], 2, pet_cropped.shape[1], pet_cropped.shape[2]])
+
         for fold in range(3):
 
             # open checkpoint file
@@ -119,7 +125,7 @@ class Hybrid_cnn():
 
             checkpoint = torch.load(os.path.join(self.pretrained_weights_path, 'fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), map_location="cpu")
             msg_3 = model_stage_2.load_state_dict(checkpoint['state_dict'], strict=False)
-            # print('Pretrained weights for model_stage_2 found at {} and loaded with msg: {}'.format(os.path.join(self.pretrained_weights_path, 'hybrid_cnn/fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), msg_3))
+            print('Pretrained weights for model_stage_2 found at {} and loaded with msg: {}'.format(os.path.join(self.pretrained_weights_path, 'hybrid_cnn/fold_' + str(fold+1) + '_best_checkpoint_2nd_stage.pth.tar'), msg_3))
 
             model.cuda()
             seg_decoder.cuda()
@@ -129,7 +135,9 @@ class Hybrid_cnn():
             model_stage_2.eval()
 
             #pred_volume = torch.empty([pet_cropped.shape[0], 2, 224, 224])
-            pred_volume = torch.empty([pet_cropped.shape[0], 2, 400, 400])
+            #pred_volume = torch.empty([pet_cropped.shape[0], 2, 400, 400])
+            pred_volume = torch.empty([pet_cropped.shape[0], 2, pet_cropped.shape[1], pet_cropped.shape[2]])
+
             for i in range(pet_cropped.shape[0]):
                 ct_slice = ct_cropped[i, :, :].astype(np.float32)
                 ct_slice = (ct_slice -  0.2617) /  0.3239
@@ -220,7 +228,7 @@ class Hybrid_cnn():
         # process function will be called once for each test sample
         for file in os.listdir(os.path.join(self.input_path, 'images/pet/')):
             uuid = os.path.splitext(file)[0]
-
+            
             self.check_gpu()
             print('Start processing')
             self.load_inputs(uuid)
