@@ -69,12 +69,15 @@ class Hybrid_cnn():
         self.convert_nii_to_mha(os.path.join(self.result_path, self.nii_seg_file), os.path.join(self.output_path, uuid + ".mha"))
         os.remove(os.path.join(self.result_path, self.nii_seg_file))
         print('Output written to: ' + os.path.join(self.output_path, uuid + ".mha"))
+        logging.info(f"Deleted temp of: {uuid}")  # Write UUID to logfile
+        
 
     def predict_ssl(self,uuid):
         """
         Your algorithm goes here
         """
         print("ssl segmentation starting!")
+        print("uuid: ", uuid)
 
         # one channel image        
         img_pet = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0000.nii.gz'))
