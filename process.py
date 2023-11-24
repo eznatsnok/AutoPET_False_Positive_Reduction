@@ -78,6 +78,7 @@ class Hybrid_cnn():
         """
         print("ssl segmentation starting!")
         print("uuid: ", uuid)
+        logging.info(f"ssl segmentation starting : {uuid}")  # Write UUID to logfile
 
         # one channel image        
         img_pet = sitk.ReadImage(os.path.join(self.nii_path, 'TCIA_001_0000.nii.gz'))
