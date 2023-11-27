@@ -91,11 +91,11 @@ class Hybrid_cnn():
             print(f"pet_volume at beginning from nii: {pet_volume.shape}")
             print(f"ct_volume at beginning from nii: {ct_volume.shape}")
         except: pass
-        ct_volume_normalized = (ct_volume - (-800)) / (400 - (-800))
-        ct_volume_normalized[ct_volume_normalized > 1] = 1.
+        # ct_volume_normalized = (ct_volume - (-800)) / (400 - (-800)) # already in preprocessing (clip)
+        ct_volume_normalized[ct_volume_normalized > 1] = 1. 
         ct_volume_normalized[ct_volume_normalized < 0] = 0.
 
-        pet_volume_normalized = (pet_volume - 0) / (0.95 * 15 - 0)
+        # pet_volume_normalized = (pet_volume - 0) / (0.95 * 15 - 0) # already in preprocessing (clip)
         pet_volume_normalized[pet_volume_normalized > 1] = 1.
         pet_volume_normalized[pet_volume_normalized < 0] = 0.
 
@@ -144,13 +144,13 @@ class Hybrid_cnn():
 
             for i in range(pet_cropped.shape[0]):
                 ct_slice = ct_cropped[i, :, :].astype(np.float32)
-                ct_slice = (ct_slice -  0.2617) /  0.3239
+                #ct_slice = (ct_slice -  0.2617) /  0.3239 # already in preprocessing 
                 ct_slice = ct_slice.reshape((1,) + ct_slice.shape)
                 ct_slice = torch.from_numpy(ct_slice.astype(np.float32)).cuda(non_blocking=True)
                 ct_slice = ct_slice.repeat(3, 1, 1)
 
                 pet_slice = pet_cropped[i, :, :].astype(np.float32)
-                pet_slice = (pet_slice -  0.0456) /  0.0855
+                #pet_slice = (pet_slice -  0.0456) /  0.0855 # already in preprocessing 
                 pet_slice = pet_slice.reshape((1,) + pet_slice.shape)
                 pet_slice = torch.from_numpy(pet_slice.astype(np.float32)).cuda(non_blocking=True)
                 pet_slice = pet_slice.repeat(3, 1, 1)
