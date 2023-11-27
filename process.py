@@ -92,10 +92,12 @@ class Hybrid_cnn():
             print(f"ct_volume at beginning from nii: {ct_volume.shape}")
         except: pass
         # ct_volume_normalized = (ct_volume - (-800)) / (400 - (-800)) # already in preprocessing (clip)
+        ct_volume_normalized = ct_volume
         ct_volume_normalized[ct_volume_normalized > 1] = 1. 
         ct_volume_normalized[ct_volume_normalized < 0] = 0.
 
         # pet_volume_normalized = (pet_volume - 0) / (0.95 * 15 - 0) # already in preprocessing (clip)
+        pet_volume_normalized = pet_volume
         pet_volume_normalized[pet_volume_normalized > 1] = 1.
         pet_volume_normalized[pet_volume_normalized < 0] = 0.
 
