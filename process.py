@@ -222,6 +222,7 @@ class Hybrid_cnn():
             pred_save_image.SetSpacing(img_pet.GetSpacing())
             pred_save_image.SetOrigin(img_pet.GetOrigin())
             pred_save_image.SetDirection(img_pet.GetDirection())
+            logging.info(f"ssl segmentation done, only need to write image {uuid}")
             sitk.WriteImage(pred_save_image, os.path.join(self.result_path, self.nii_seg_file))
 
             print("ssl segmentation done!")
@@ -232,6 +233,7 @@ class Hybrid_cnn():
         Read inputs from /input, process with your algorithm and write to /output
         """
         # process function will be called once for each test sample
+        logging.info(f"Inhalt von Result Ordner am Anfang: {os.listdir(self.result_path)}") 
         for file in os.listdir(os.path.join(self.input_path, 'images/pet/')):
             uuid = os.path.splitext(file)[0]
             
