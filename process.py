@@ -91,25 +91,9 @@ class Hybrid_cnn():
             print(f"pet_volume at beginning from nii: {pet_volume.shape}")
             print(f"ct_volume at beginning from nii: {ct_volume.shape}")
         except: pass
-        # ct_volume_normalized = (ct_volume - (-800)) / (400 - (-800)) # already in preprocessing (clip)
-        ct_volume_normalized = ct_volume
-        ct_volume_normalized[ct_volume_normalized > 1] = 1. 
-        ct_volume_normalized[ct_volume_normalized < 0] = 0.
-
-        # pet_volume_normalized = (pet_volume - 0) / (0.95 * 15 - 0) # already in preprocessing (clip)
-        pet_volume_normalized = pet_volume
-        pet_volume_normalized[pet_volume_normalized > 1] = 1.
-        pet_volume_normalized[pet_volume_normalized < 0] = 0.
-
-        # start = ct_volume_normalized.shape[1] // 2 - 224 // 2
-        # end = start + 224
-        #pet_cropped = pet_volume_normalized[:, start:end, start:end]
-        #ct_cropped = ct_volume_normalized[:, start:end, start:end]
-        pet_cropped = pet_volume_normalized
-        ct_cropped = ct_volume_normalized
-        # pet_cropped , bbox = crop_to_nonzero(np.expand_dims(pet_volume_normalized, axis=0)) # funktion aus cropping.py erwartet tensor (4 dims) -> add dummy dim
-        # pet_cropped = np.squeeze(pet_cropped, axis =0)
-        # ct_cropped = ct_volume_normalized[bbox[0][0]:bbox[0][1], :, :]
+       
+        pet_cropped = pet_volume
+        ct_cropped = ct_volume
 
         model = ResNet(Bottleneck, [3, 4, 6, 3])
         num_channels = model.layer4[2].bn3.weight.shape[0]
@@ -117,8 +101,6 @@ class Hybrid_cnn():
 
         model_stage_2 = UNet(n_channels=5, n_classes=2, bilinear=False)
 
-        #result = torch.empty([3, pet_cropped.shape[0], 2, 224, 224])
-        #result = torch.empty([3, pet_cropped.shape[0], 2, 400, 400])
         result = torch.empty([3, pet_cropped.shape[0], 2, pet_cropped.shape[1], pet_cropped.shape[2]])
 
         for fold in range(3):
@@ -139,20 +121,18 @@ class Hybrid_cnn():
             model.eval()
             seg_decoder.eval()
             model_stage_2.eval()
-
-            #pred_volume = torch.empty([pet_cropped.shape[0], 2, 224, 224])
-            #pred_volume = torch.empty([pet_cropped.shape[0], 2, 400, 400])
+            
             pred_volume = torch.empty([pet_cropped.shape[0], 2, pet_cropped.shape[1], pet_cropped.shape[2]])
 
             for i in range(pet_cropped.shape[0]):
                 ct_slice = ct_cropped[i, :, :].astype(np.float32)
-                #ct_slice = (ct_slice -  0.2617) /  0.3239 # already in preprocessing 
+                ct_slice = (ct_slice -  0.2617) /  0.3239
                 ct_slice = ct_slice.reshape((1,) + ct_slice.shape)
                 ct_slice = torch.from_numpy(ct_slice.astype(np.float32)).cuda(non_blocking=True)
                 ct_slice = ct_slice.repeat(3, 1, 1)
 
                 pet_slice = pet_cropped[i, :, :].astype(np.float32)
-                #pet_slice = (pet_slice -  0.0456) /  0.0855 # already in preprocessing 
+                pet_slice = (pet_slice -  0.0456) /  0.0855
                 pet_slice = pet_slice.reshape((1,) + pet_slice.shape)
                 pet_slice = torch.from_numpy(pet_slice.astype(np.float32)).cuda(non_blocking=True)
                 pet_slice = pet_slice.repeat(3, 1, 1)
@@ -176,15 +156,7 @@ class Hybrid_cnn():
         
         final_pred = torch.softmax(torch.mean(result,dim=0), dim=1)
         pred_result = final_pred.cpu().data.numpy()     
-        try:
-            print(f"pred_result bevore brain slices removed: {pred_result.shape}")  
-        except: pass
-        #pred_result[pet_cropped.shape[0] - 15:,:,:] = 0 # remove the last few slices that are in the brain region
-        #pred_result[:15,:,:] = 0 # remove the first few slices that are in the brain region
-        try:
-            print(f"pred_result after brain slices removed: {pred_result.shape}")
-        except: pass
-        #pred_pad_volume=np.transpose(np.pad(pred_result, ((0,0), (0,0), (start, ct_volume_normalized.shape[1] - end), (start, ct_volume_normalized.shape[1] - end)), 'constant'), (1, 0, 2, 3))
+
         pred_pad_volume=np.transpose(pred_result, (1, 0, 2, 3))
         # combine with nnUnet outcome
         os.system(f'nnUNet_predict -i {self.nii_path} -o {self.result_path} -t 001 -m 3d_fullres --save_npz')
