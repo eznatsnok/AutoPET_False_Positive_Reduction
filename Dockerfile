@@ -1,7 +1,6 @@
 # FROM python:3.9-slim
 FROM pytorch/pytorch
 
-
 RUN groupadd -r algorithm && useradd -m --no-log-init -r -g algorithm algorithm
 
 RUN mkdir -p /opt/algorithm /input /output \
@@ -18,7 +17,7 @@ RUN python -m pip install --user -U pip
 
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
 RUN python -m pip install --user torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
-RUN python -m pip install --user -rrequirements.txt
+RUN python -m pip install --user -r requirements.txt
 
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
 

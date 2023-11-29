@@ -8,9 +8,9 @@ docker run --rm \
         --security-opt="no-new-privileges" \
         --shm-size="128m" \
         --pids-limit="256" \
-        --gpus='"device=1"' \
-        -v /mnt/rcbe-srv-015/Students/hik37564/FDG_PETCT/for_AutoPet/input/:/input/ \
-        -v /mnt/rcbe-srv-015/Students/hik37564/FDG_PETCT/for_AutoPet/hybrid_cnn-output:/output/ \
+        --gpus='"device=0"' \
+        -v /home/konstanzehierl/Desktop/mnt_disk/input:/input/ \
+        -v /home/konstanzehierl/Desktop/hybrid_cnn-output:/output/ \
         hybrid_cnn
 
 echo "Evaluation done, checking results" 

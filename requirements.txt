@@ -2,8 +2,6 @@
 evalutils
 scikit-learn
 scipy
-copy
-typing
-numpy
+
 nnUNET
 matplotlib

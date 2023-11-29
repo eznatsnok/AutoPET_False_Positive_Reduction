@@ -11,6 +11,7 @@ from scipy.special import softmax
 
 
 logging.basicConfig(filename='/output/log.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+
 class Hybrid_cnn():
     def __init__(self):
         """

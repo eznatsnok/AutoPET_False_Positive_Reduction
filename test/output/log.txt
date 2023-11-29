@@ -1,0 +1,10 @@
+2023-11-29 13:43:29,085 Inhalt von Result Ordner am Anfang: []
+2023-11-29 13:44:48,246 Inhalt von Result Ordner am Anfang: []
+2023-11-29 13:45:33,067 Inhalt von Result Ordner am Anfang: []
+2023-11-29 13:47:23,273 Inhalt von Result Ordner am Anfang: []
+2023-11-29 13:48:07,141 Inhalt von Result Ordner am Anfang: []
+2023-11-29 13:49:52,754 Inhalt von Result Ordner am Anfang: []
+2023-11-29 13:50:52,551 Inhalt von Result Ordner am Anfang: []
+2023-11-29 13:50:54,645 ssl segmentation starting : 0b98dbe00d
+2023-11-29 13:52:29,823 ssl segmentation done, only need to write image 0b98dbe00d
+2023-11-29 13:52:29,904 Deleted temp of: 0b98dbe00d
